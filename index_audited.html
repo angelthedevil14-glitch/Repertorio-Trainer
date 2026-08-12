@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Repertorio Master Trainer</title>
+<style>
+:root{
+ --bg:#0d1015;--panel:#171b23;--panel2:#252b36;--txt:#f5f7fb;--muted:#9ea8b6;
+ --light:#f0d9b5;--dark:#b58863;--accent:#55b6ff;--ok:#51da99;--bad:#ff6f78;
+ --sel:#ffe55c;--last:rgba(255,231,77,.40)
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body{padding:env(safe-area-inset-top) 10px env(safe-area-inset-bottom)}
+.app{max-width:760px;margin:auto}.top{padding:6px 6px 10px}
+.title{font-size:24px;font-weight:850}.sub{font-size:13px;color:var(--muted);margin-top:4px;line-height:1.35}
+.panel{background:var(--panel);border-radius:18px;padding:12px}
+.filters{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+select,button{font:inherit;border:0;border-radius:12px;padding:12px;background:var(--panel2);color:var(--txt);-webkit-appearance:none;appearance:none}
+button.primary{background:var(--accent);color:#07121c;font-weight:850}
+.meta{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.opening{font-size:12px;color:var(--muted)}.line{font-size:17px;font-weight:800;margin-top:2px}
+.depth{font-size:12px;background:var(--panel2);padding:6px 9px;border-radius:999px;white-space:nowrap}
+.boardShell{width:min(96vw,620px);margin:12px auto 4px;display:grid;grid-template-columns:20px 1fr;grid-template-rows:1fr 20px}
+.ranks{grid-column:1;grid-row:1;display:grid;grid-template-rows:repeat(8,minmax(0,1fr));align-items:center;justify-items:center;color:var(--muted);font-size:11px;font-weight:700}
+.files{grid-column:2;grid-row:2;display:grid;grid-template-columns:repeat(8,minmax(0,1fr));align-items:center;justify-items:center;color:var(--muted);font-size:11px;font-weight:700}
+.board{grid-column:2;grid-row:1;display:grid;grid-template-columns:repeat(8,minmax(0,1fr));grid-template-rows:repeat(8,minmax(0,1fr));aspect-ratio:1/1;overflow:hidden;border-radius:8px;box-shadow:0 10px 30px rgba(0,0,0,.35);touch-action:manipulation;background:var(--dark)}
+.sq{border:0!important;outline:0!important;border-radius:0!important;margin:0!important;padding:0!important;display:flex;align-items:center;justify-content:center;position:relative;min-width:0;min-height:0;width:100%;height:100%;-webkit-appearance:none!important;appearance:none!important;box-shadow:none}
+.sq.light{background:var(--light)}.sq.dark{background:var(--dark)}
+.sq.sel{box-shadow:inset 0 0 0 5px var(--sel)!important}
+.sq.last:after{content:"";position:absolute;inset:0;background:var(--last);pointer-events:none}
+.piece{position:relative;z-index:2;font-family:"Arial Unicode MS","Apple Symbols","Noto Sans Symbols 2",serif;font-size:clamp(30px,11vw,72px);line-height:1;pointer-events:none}
+.wp{color:#fff;text-shadow:0 1px 1px #222,0 0 1px #222;filter:drop-shadow(0 1px 1px rgba(0,0,0,.45))}
+.bp{color:#111;text-shadow:0 0 1px rgba(255,255,255,.45);filter:drop-shadow(0 1px 1px rgba(0,0,0,.35))}
+.prompt{font-size:17px;font-weight:800;margin:12px 2px 4px}
+.status{min-height:25px;font-size:14px;font-weight:750;margin:4px 2px}
+.status.ok{color:var(--ok)}.status.bad{color:var(--bad)}.status.info{color:#cfe7ff}
+.note{font-size:13px;color:var(--muted);line-height:1.4;margin-top:9px;min-height:18px}
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.controls.three{grid-template-columns:1fr 1fr 1fr}
+.stats{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.badge{background:var(--panel2);border-radius:999px;padding:6px 10px;font-size:12px}
+.audit{margin-top:10px;font-size:11px;color:var(--muted);text-align:center}
+.hidden{display:none}
+@media(max-width:430px){.filters{grid-template-columns:1fr}.title{font-size:22px}.controls.three{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+ <div class="top">
+   <div class="title">Repertorio Master Trainer</div>
+   <div class="sub">Parte da un nodo casuale del tuo repertorio e continua fino alla fine del ramo. Dopo ogni risposta corretta, il Nero sceglie casualmente una delle risposte che hai preparato.</div>
+ </div>
+ <div class="panel">
+  <div class="filters">
+   <select id="filter"><option value="all">Tutto il repertorio</option></select>
+   <select id="depthFilter"><option value="all">Qualsiasi profondità</option><option value="early">Apertura</option><option value="mid">Medio</option><option value="deep">Profondo</option></select>
+  </div>
+  <div class="meta">
+    <div><div id="opening" class="opening"></div><div id="line" class="line">Posizione casuale</div></div>
+    <div id="depth" class="depth"></div>
+  </div>
+
+  <div class="boardShell">
+    <div id="ranks" class="ranks"></div>
+    <div id="board" class="board"></div>
+    <div id="files" class="files"></div>
+  </div>
+
+  <div class="prompt">Trova la mossa del tuo repertorio.</div>
+  <div id="status" class="status"></div>
+  <div id="note" class="note"></div>
+
+  <div class="controls three">
+    <button id="newBtn" class="primary">Nuova posizione</button>
+    <button id="flipBtn">Gira</button>
+    <button id="ideaBtn">Mostra idea</button>
+  </div>
+
+  <div class="stats">
+    <div class="badge">✓ <span id="good">0</span></div>
+    <div class="badge">✕ <span id="bad">0</span></div>
+    <div class="badge">Serie <span id="streak">0</span></div>
+  </div>
+  <div class="audit">Database verificato: <span id="branchCount"></span> rami unici · <span id="nodeCount"></span> posizioni bianche allenabili.</div>
+ </div>
+</div>
+
+<script>
+const RAW=[["Najdorf / Lipnitsky","...Be7, main g4-g5","Arma principale: g4!, poi g5 e attacco sul re.","e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6 f1c4 e7e6 c1e3 f8e7 g2g4 e8g8 g4g5"],["Najdorf / Lipnitsky","...Be7, ...Nxe4","Dopo ...Nxe4: Nxe4, ...d5, Nc3 e Qf3/attacco ala di re.","e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6 f1c4 e7e6 c1e3 f8e7 g2g4 f6e4 c3e4 d6d5 e4c3"],["Najdorf / Lipnitsky","...Be7, ...b5","Contro ...b5: g5; temi Bxe6/Bxf7/Qh5+/Nb6.","e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6 f1c4 e7e6 c1e3 f8e7 g2g4 b7b5 g4g5"],["Najdorf / Lipnitsky","...b5 trap, ...d5","Dopo ...b4 Na4 ...Nxe4 O-O: Re1! è la mossa chiave.","e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6 f1c4 e7e6 c1e3 b7b5 c4b3 b5b4 c3a4 f6e4 e1g1 d6d5 f1e1"],["Najdorf / Lipnitsky","...b5 trap, ...Nd7 → ...Bb7 Nxe6","Dopo ...Nd7 e Re1, ...Bb7 permette Nxe6.","e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6 f1c4 e7e6 c1e3 b7b5 c4b3 b5b4 c3a4 f6e4 e1g1 b8d7 f1e1 c8b7 d4e6"],["Najdorf / Lipnitsky","...b5 trap, ...Bb7","Contro ...Bb7: Nxe6 fxe6 Bxe6, poi Re1/c3 e attacco.","e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6 f1c4 e7e6 c1e3 b7b5 c4b3 b5b4 c3a4 f6e4 e1g1 c8b7 d4e6 f7e6 b3e6"],["Dragon / Accelerated Dragon","Yugoslav setup","Setup Yugoslav: Be3, f3, Qd2, O-O-O, h4-h5/g4-g5.","e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 g7g6 c1e3 f8g7 f2f3 e8g8 d1d2"],["Dragon / Accelerated Dragon","Yugoslav castle long","Arrocco lungo e corsa di pedoni sul re.","e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 g7g6 c1e3 f8g7 f2f3 e8g8 d1d2 b8c6 e1c1"],["Scotch Gambit","London: 4...Bb4+ 5.c3","London Defense: c3, bxc3; tattiche Bxf7+ e Qd5.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 f8b4 c2c3 d4c3 b2c3"],["Scotch Gambit","London: ...Ba5, ...Nf6","Contro ...Ba5 e ...Nf6: Ba3, d6, e5!.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 f8b4 c2c3 d4c3 b2c3 b4a5 e1g1 g8f6 c1a3 d7d6 e4e5"],["Scotch Gambit","London: ...Ba5, ...d6 Qb3","Contro ...d6: Qb3; temi Bxe6/Ng5 o e5 contro mosse di donna.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 f8b4 c2c3 d4c3 b2c3 b4a5 e1g1 d7d6 d1b3"],["Scotch Gambit","London: ...Bb6 a4","Contro ...Bb6: a4!; ...d6 o ...Na5 sono le difese serie.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 f8b4 c2c3 d4c3 b2c3 b4a5 e1g1 a5b6 a2a4"],["Scotch Gambit","4...Bc5 5.c3 ...Bb6","Dopo ...Bb6 cxd4: contro ...d6 → Bb5 e gioco tipo Ruy Lopez/Italiana.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 f8c5 c2c3 c5b6 c3d4 d7d6 c4b5"],["Scotch Gambit","4...Bc5 ...Bb6 ...Nge7","Contro ...Nge7: d5; se ...Nb4, Bd3 e Qb3.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 f8c5 c2c3 c5b6 c3d4 g8e7 d4d5"],["Scotch Gambit","4...Bc5 ...Bb6 ...Nf6","Trappola: contro ...Nf6, e5!; rami ...Ne4, ...Ba5, ...d5.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 f8c5 c2c3 c5b6 c3d4 g8f6 e4e5"],["Scotch Gambit","4...Bc5 5...Nf6 6.b4","Mossa chiave contro ...Nf6: b4!.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 f8c5 c2c3 g8f6 b2b4"],["Scotch Gambit","...Nf6 b4 ...Bb6 e5","...Bb6 → e5; contro ...Ne4 o ...d5 seguono linee preparate.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 f8c5 c2c3 g8f6 b2b4 c5b6 e4e5"],["Scotch Gambit","...Nf6 b4 ...Be7 e5","...Be7 → e5; rami ...Ne4, ...Ng4, ...d5.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 f8c5 c2c3 g8f6 b2b4 c5e7 e4e5"],["Scotch Gambit","4...Bc5 5...dxc3 Bxf7+","Tattica standard: Bxf7+ Kxf7 Qd5+.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 f8c5 c2c3 d4c3 c4f7"],["Scotch Gambit","4...Bc5 5...Qf6 b4","Contro ...Qf6: b4!; ...Bb6 → e5, ...Nxe5 → Qe2.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 f8c5 c2c3 d8f6 b2b4"],["Scotch Gambit","4...Nf6 O-O, Nakhmanson","Dopo ...Nxe4: Nc3! Nakhmanson Gambit.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 g8f6 e1g1 f6e4 b1c3"],["Scotch Gambit","Nakhmanson ...dxc3 Bxf7+","...dxc3 → Bxf7+; poi Qd5+ e re esposto.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 g8f6 e1g1 f6e4 b1c3 d4c3 c4f7"],["Scotch Gambit","Nakhmanson ...Nxc3 bxc3","...Nxc3 → bxc3; contro ...dxc3 c’è Ng5, contro ...d5 Bb5.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 g8f6 e1g1 f6e4 b1c3 e4c3 b2c3"],["Scotch Gambit","Scotch 4...d6 positional","Contro ...d6: Nxd4, Nxc6, ...bxc6, b3 e Bb2.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 d7d6 f3d4 g8f6 d4c6 b7c6 b2b3"],["Sicilian French / Taimanov / Kan","...Nc6 ...Nf6 main","Nxc6, bxc6, e5, ...Nd5, Ne4: struttura centrale dominante.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 b8c6 b1c3 g8f6 d4c6 b7c6 e4e5 f6d5 c3e4"],["Sicilian French / Taimanov / Kan","...Nc6 ...Bc5 Ndb5","Contro ...Bc5: Ndb5; temi Nd6+.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 b8c6 b1c3 f8c5 d4b5"],["Sicilian French / Taimanov / Kan","...Bc5 ...a6 Nd6+","...a6 → Nd6+; la ricattura naturale porta a vantaggio duraturo.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 b8c6 b1c3 f8c5 d4b5 a7a6 b5d6"],["Sicilian French / Taimanov / Kan","...Nc6 ...Bb4 Nxc6","Contro ...Bb4: Nxc6; su ...dxc6 Qxd8+, su ...bxc6 Qd4.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 b8c6 b1c3 f8b4 d4c6"],["Sicilian French / Taimanov / Kan","...Nc6 ...a6 g4","Contro ...a6 / ...d6: g4, Be3, O-O-O e pedoni di re.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 b8c6 b1c3 a7a6 g2g4"],["Sicilian French / Taimanov / Kan","...Nc6 ...Qc7 Ndb5","Contro ...Qc7: Ndb5, poi f4/Bf4 e Nd6+.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 b8c6 b1c3 d8c7 d4b5"],["Sicilian French / Taimanov / Kan","Kan ...a6 Bd3","Kan: Bd3 immediata prima di Nc3.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 a7a6 f1d3"],["Sveshnikov / Classical","Sveshnikov ...e5 Nb5","Contro ...e5: Nb5, ingresso nel tuo albero Sveshnikov.","e2e4 c7c5 g1f3 b8c6 d2d4 c5d4 f3d4 e7e5 d4b5"],["Sveshnikov / Classical","Sveshnikov ...Nf6 N1c3","Dopo ...Nf6: N1c3.","e2e4 c7c5 g1f3 b8c6 d2d4 c5d4 f3d4 e7e5 d4b5 g8f6 b1c3"],["Sveshnikov / Classical","Sveshnikov main ...d6 Bg5","Linea importante: ...d6 → Bg5.","e2e4 c7c5 g1f3 b8c6 d2d4 c5d4 f3d4 e7e5 d4b5 g8f6 b1c3 d7d6 c1g5"],["Sveshnikov / Classical","Sveshnikov ...a6 Na3","Dopo ...a6: Na3; contro ...Be7/...Be6/...Nd4 → Nc4.","e2e4 c7c5 g1f3 b8c6 d2d4 c5d4 f3d4 e7e5 d4b5 g8f6 b1c3 d7d6 c1g5 a7a6 b5a3"],["Sveshnikov / Classical","Sveshnikov ...Be7 Nc4","...Be7 → Nc4; poi Bxf6 e pressione su d6.","e2e4 c7c5 g1f3 b8c6 d2d4 c5d4 f3d4 e7e5 d4b5 g8f6 b1c3 d7d6 c1g5 a7a6 b5a3 f8e7 a3c4"],["Sveshnikov / Classical","Sveshnikov ...h6 Bxf6","...h6 → Bxf6; ...Qxf6 Nd5/Nc4, ...gxf6 Nc4 poi Nd5.","e2e4 c7c5 g1f3 b8c6 d2d4 c5d4 f3d4 e7e5 d4b5 g8f6 b1c3 d7d6 c1g5 h7h6 g5f6"],["Sveshnikov / Classical","Classical ...Nf6 ...d6 Bc4","Classical: Bc4; poi contro e6 Be3/Qe2/O-O-O e attacco.","e2e4 c7c5 g1f3 b8c6 d2d4 c5d4 f3d4 g8f6 b1c3 d7d6 f1c4"],["Sveshnikov / Classical","Classical ...Qc7 Ndb5","Contro ...Qc7: Ndb5, poi Nd5 dopo lo spostamento della donna.","e2e4 c7c5 g1f3 b8c6 d2d4 c5d4 f3d4 g8f6 b1c3 d7d6 f1c4 d8c7 d4b5"],["Sveshnikov / Classical","Classical ...Qb6 Nb3","Contro ...Qb6: Nb3 e sviluppo con Be3.","e2e4 c7c5 g1f3 b8c6 d2d4 c5d4 f3d4 g8f6 b1c3 d7d6 f1c4 d8b6 d4b3"],["Sveshnikov / Classical","Classical ...Qa5 Nb3","Contro ...Qa5: Nb3, scaccia la donna e Be3.","e2e4 c7c5 g1f3 b8c6 d2d4 c5d4 f3d4 g8f6 b1c3 d7d6 f1c4 d8a5 d4b3"],["Caro-Kann 3.f3","...e6 Steinitz structure","...e6 → Nc3, poi e5/f4/Qd2/O-O-O: struttura tipo French Steinitz.","e2e4 c7c6 d2d4 d7d5 f2f3 e7e6 b1c3"],["Caro-Kann 3.f3","...dxe4 fxe4","...dxe4 → fxe4.","e2e4 c7c6 d2d4 d7d5 f2f3 d5e4 f3e4"],["Caro-Kann 3.f3","...dxe4 ...e5 Nf3","Dopo ...e5: Nf3; rami ...Bg4, ...Nf6, ...exd4.","e2e4 c7c6 d2d4 d7d5 f2f3 d5e4 f3e4 e7e5 g1f3"],["Caro-Kann 3.f3","...Nf6 e5","...Nf6 → e5, Nfd7, f4: trasposizione Steinitz.","e2e4 c7c6 d2d4 d7d5 f2f3 g8f6 e4e5"],["Caro-Kann 3.f3","...g6 e5","...g6 → e5 e stessi temi Steinitz.","e2e4 c7c6 d2d4 d7d5 f2f3 g7g6 e4e5"],["Caro-Kann 3.f3","...Qb6 Nc3","...Qb6 → Nc3; su ...e6 a3 e sviluppo solido.","e2e4 c7c6 d2d4 d7d5 f2f3 d8b6 b1c3"],["Caro-Kann 3.f3","...Qb6 ...e6 a3","Profilassi a3 prima dello sviluppo successivo.","e2e4 c7c6 d2d4 d7d5 f2f3 d8b6 b1c3 e7e6 a2a3"],["French Advance Na3","...Nc6 Nf3 Na3","Firma del repertorio: Na3! dopo Qb6/trasposizioni.","e2e4 e7e6 d2d4 d7d5 e4e5 c7c5 c2c3 b8c6 g1f3 d8b6 b1a3"],["French Advance Na3","...Bd7 Nf3 Na3","...Bd7 → Nf3 e Na3, stesso imbuto teorico.","e2e4 e7e6 d2d4 d7d5 e4e5 c7c5 c2c3 c8d7 g1f3 b8c6 b1a3"],["French Advance Na3","...Ne7 Nf3 Na3","...Ne7 → Nf3 e Na3, rientro nello stesso canovaccio.","e2e4 e7e6 d2d4 d7d5 e4e5 c7c5 c2c3 g8e7 g1f3 b8c6 b1a3"],["French Advance Na3","...Qb6 Nf3 Na3","...Qb6 → Nf3 e Na3.","e2e4 e7e6 d2d4 d7d5 e4e5 c7c5 c2c3 d8b6 g1f3 b8c6 b1a3"],["French Advance Na3","Na3 ...cxd4 cxd4 Nc2","Dopo ...cxd4 cxd4: spesso Nc2 e Bd3.","e2e4 e7e6 d2d4 d7d5 e4e5 c7c5 c2c3 b8c6 g1f3 d8b6 b1a3 c5d4 c3d4 g8e7 a3c2"],["French Advance Na3","Na3 ...Bb4+ Bd2","...Bb4+ → Bd2; se scambia, Qxd2; altrimenti Nc2.","e2e4 e7e6 d2d4 d7d5 e4e5 c7c5 c2c3 b8c6 g1f3 d8b6 b1a3 c5d4 c3d4 f8b4 c1d2"],["French Advance Na3","Ng6 rule h4","Regola: se il cavallo va in g6, h4 e spesso h5.","e2e4 e7e6 d2d4 d7d5 e4e5 c7c5 c2c3 b8c6 g1f3 d8b6 b1a3 g8e7 a3c2 e7g6 h2h4"],["French Advance Na3","Poisoned d4: g4 motif","Trappola del pedone d4: dopo le mosse profilattiche corrette, g4! rende d4 poisoned.","e2e4 e7e6 d2d4 d7d5 e4e5 c7c5 c2c3 b8c6 g1f3 d8b6 b1a3 c5d4 c3d4 g8e7 a3c2 e7f5 f1d3 c8d7 e1g1 a7a6 g1h1 f8e7 g2g4"],["Pirc / Modern","Chinese ...O-O g5","Chinese Variation: contro ...O-O → g5 e poi h4.","e2e4 d7d6 d2d4 g8f6 b1c3 g7g6 f1e2 f8g7 g2g4 e8g8 g4g5"],["Pirc / Modern","Chinese ...h6 f4","Contro ...h6 → f4; chiudi il centro e attacca.","e2e4 d7d6 d2d4 g8f6 b1c3 g7g6 f1e2 f8g7 g2g4 h7h6 f2f4"],["Pirc / Modern","Chinese ...d5 e5","Contro ...d5 → e5, chiudendo il centro.","e2e4 d7d6 d2d4 g8f6 b1c3 g7g6 f1e2 f8g7 g2g4 d6d5 e4e5"],["Pirc / Modern","Chinese ...Nc6 d5","Contro ...Nc6 → d5, scaccia/intrappola il cavallo.","e2e4 d7d6 d2d4 g8f6 b1c3 g7g6 f1e2 f8g7 g2g4 b8c6 d4d5"],["Pirc / Modern","Chinese ...e5 dxe5","Contro ...e5 → dxe5, cambio donne, poi g5 e O-O-O.","e2e4 d7d6 d2d4 g8f6 b1c3 g7g6 f1e2 f8g7 g2g4 e7e5 d4e5"],["Pirc / Modern","Pirc ...e6 f4","Contro ...e6: f4, spazio e rotture e5/d5 secondo il centro.","e2e4 d7d6 d2d4 g8f6 b1c3 e7e6 f2f4"],["Najdorf / Lipnitsky","Be7 O-O g5 Nd7 Bxe6","Tema sacrificio Bxe6 contro ...Nd7.","e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6 f1c4 e7e6 c1e3 f8e7 g2g4 e8g8 g4g5 f6d7 c4e6"],["Najdorf / Lipnitsky","Be7 Nxe4 d5 dxc4 Qf3","Dopo ...Nxe4 Nxe4 d5 Nc3 e ...dxc4, Qf3.","e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6 f1c4 e7e6 c1e3 f8e7 g2g4 f6e4 c3e4 d6d5 e4c3 d5c4 d1f3"],["Najdorf / Lipnitsky","Be7 b5 g5 bxc4 gxf6","Dopo ...bxc4, il pedone g cattura il cavallo f6.","e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6 f1c4 e7e6 c1e3 f8e7 g2g4 b7b5 g4g5 b5c4 g5f6"],["Najdorf / Lipnitsky","Be7 b5 Nxe4 Bxe6 ...e5","Linea torre a8: Qh5+, Qf3, Nf6 e diagonale f3-a8.","e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6 f1c4 e7e6 c1e3 f8e7 g2g4 b7b5 g4g5 f6e4 c4e6 f7e6 c3e4 e6e5 d1h5 g7g6 h5f3 e5d4 e3d4 h8f8 e4f6 e7f6 d4f6 d8a5 c2c3"],["Najdorf / Lipnitsky","Be7 b5 Nxe4 Bxe6 ...d5 Kd7","Linea ...d5: Nxf6+, Qh5+, gxf6, Ne6+, O-O-O.","e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6 f1c4 e7e6 c1e3 f8e7 g2g4 b7b5 g4g5 f6e4 c4e6 f7e6 c3e4 d6d5 e4f6 g7f6 d1h5 e8d7 g5f6 e7f6 d4e6 d7e6 e1c1"],["Najdorf / Lipnitsky","Be7 b5 Nxe4 Bxe6 ...O-O Rg1","Contro ...O-O: Rg1 e temi Nf6/Nc7.","e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6 f1c4 e7e6 c1e3 f8e7 g2g4 b7b5 g4g5 f6e4 c4e6 f7e6 c3e4 e8g8 h1g1"],["Najdorf / Lipnitsky","b5 trap d5 Be7 Nf5 O-O Nxe7 Nb6","Re1, Nf5; se il Nero arrocca, Nxe7 e Nb6.","e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6 f1c4 e7e6 c1e3 b7b5 c4b3 b5b4 c3a4 f6e4 e1g1 d6d5 f1e1 f8e7 d4f5 e8g8 f5e7 d8e7 a4b6"],["Najdorf / Lipnitsky","b5 trap d5 Be7 Nf5 exf5 Bxd5","Se ...exf5, Bxd5 crea tattiche sulla torre.","e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6 f1c4 e7e6 c1e3 b7b5 c4b3 b5b4 c3a4 f6e4 e1g1 d6d5 f1e1 f8e7 d4f5 e6f5 b3d5"],["Najdorf / Lipnitsky","b5 trap d5 Nf6 Nf5 exf5 Nb6+","Tema Nb6+ dopo ...exf5.","e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6 f1c4 e7e6 c1e3 b7b5 c4b3 b5b4 c3a4 f6e4 e1g1 d6d5 f1e1 e4f6 d4f5 e6f5 a4b6"],["Najdorf / Lipnitsky","b5 trap d5 Nd7 sacrifice","Nxe6, Bxd5, Qh5+ e Qxd5.","e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6 f1c4 e7e6 c1e3 b7b5 c4b3 b5b4 c3a4 f6e4 e1g1 d6d5 f1e1 b8d7 d4e6 f7e6 b3d5 e6d5 d1h5 g7g6 h5d5"],["Najdorf / Lipnitsky","b5 trap d5 Bb7 c4","Contro ...Bb7, c4.","e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6 f1c4 e7e6 c1e3 b7b5 c4b3 b5b4 c3a4 f6e4 e1g1 d6d5 f1e1 c8b7 c2c4"],["Najdorf / Lipnitsky","b5 trap Nd7 Bb7 Nf6 c3","Dopo Bxe6, ...Nf6 → c3.","e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6 f1c4 e7e6 c1e3 b7b5 c4b3 b5b4 c3a4 f6e4 e1g1 b8d7 f1e1 c8b7 d4e6 f7e6 b3e6 e4f6 c2c3"],["Najdorf / Lipnitsky","b5 trap Nd7 Bb7 Be7 Qh5-Qh6","Qh5+, g6, Qh6.","e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6 f1c4 e7e6 c1e3 b7b5 c4b3 b5b4 c3a4 f6e4 e1g1 b8d7 f1e1 c8b7 d4e6 f7e6 b3e6 f8e7 d1h5 g7g6 h5h6"],["Najdorf / Lipnitsky","b5 trap Bb7 Nd7 Be7 Qh6","Dopo Nd7, se ...Be7: Qh5+, g6, Qh6.","e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6 f1c4 e7e6 c1e3 b7b5 c4b3 b5b4 c3a4 f6e4 e1g1 c8b7 d4e6 f7e6 b3e6 b8d7 f1e1 f8e7 d1h5 g7g6 h5h6"],["Najdorf / Lipnitsky","b5 trap Bb7 Nd7 Nf6 c3","Dopo Nd7, ...Nf6 → c3.","e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6 f1c4 e7e6 c1e3 b7b5 c4b3 b5b4 c3a4 f6e4 e1g1 c8b7 d4e6 f7e6 b3e6 b8d7 f1e1 e4f6 c2c3"],["Scotch Gambit","London Bc5 Bxf7 Qd5","Tattica Bxf7+ Kxf7 Qd5+.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 f8b4 c2c3 d4c3 b2c3 b4c5 c4f7 e8f7 d1d5"],["Scotch Gambit","London Be7 Qd5","...Be7? Qd5.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 f8b4 c2c3 d4c3 b2c3 b4e7 d1d5"],["Scotch Gambit","London Ba5 Nf6 e5 Ng4 exd6 d7","Ba3, e5, exd6, d7.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 f8b4 c2c3 d4c3 b2c3 b4a5 e1g1 g8f6 c1a3 d7d6 e4e5 f6g4 e5d6 e8g8 d6d7"],["Scotch Gambit","London Ba5 Nf6 e5 Nh5 exd6 d7","Stesso piano contro ...Nh5.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 f8b4 c2c3 d4c3 b2c3 b4a5 e1g1 g8f6 c1a3 d7d6 e4e5 f6h5 e5d6 e8g8 d6d7"],["Scotch Gambit","London Ba5 d6 Qb3 Be6 Bxe6 Ng5","Qb3, Bxe6, Ng5.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 f8b4 c2c3 d4c3 b2c3 b4a5 e1g1 d7d6 d1b3 c8e6 c4e6 f7e6 f3g5"],["Scotch Gambit","London Ba5 d6 Qb3 Qf6 e5 dxe5 Bg5 Re1","e5 e sviluppo con Bg5/Re1.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 f8b4 c2c3 d4c3 b2c3 b4a5 e1g1 d7d6 d1b3 d8f6 e4e5 d6e5 c1g5 f6g6 f1e1"],["Scotch Gambit","London Ba5 d6 Qb3 Qe7 e5","Contro ...Qe7: e5.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 f8b4 c2c3 d4c3 b2c3 b4a5 e1g1 d7d6 d1b3 d8e7 e4e5"],["Scotch Gambit","London Ba5 Bb6 a4 d6","...Bb6: a4; ...d6 è una difesa seria.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 f8b4 c2c3 d4c3 b2c3 b4a5 e1g1 a5b6 a2a4 d7d6"],["Scotch Gambit","London Ba5 Bb6 a4 Na5","...Bb6: a4; ...Na5 è una difesa seria.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 f8b4 c2c3 d4c3 b2c3 b4a5 e1g1 a5b6 a2a4 c6a5"],["Scotch Gambit","Bc5 Bb6 d6 Bb5 Bd7","Struttura tipo Ruy Lopez con sviluppo migliore.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 f8c5 c2c3 c5b6 c3d4 d7d6 c4b5 c8d7"],["Scotch Gambit","Bc5 Bb6 d6 Bb5 a6","Struttura tipo Ruy Lopez.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 f8c5 c2c3 c5b6 c3d4 d7d6 c4b5 a7a6"],["Scotch Gambit","Bc5 Bb6 d6 Nf6 d5 a6 Ba4 Ba5 Nbd2 b5 win pawn","Linea per vincere un pedone.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 f8c5 c2c3 c5b6 c3d4 d7d6 c4b5 g8f6 d4d5 a7a6 b5a4 b6a5 b1d2 b7b5 d5c6 b5a4 d1a4"],["Scotch Gambit","Bc5 Bb6 Na5 Bd3 d5","Bd3 e d5, spazio.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 f8c5 c2c3 c5b6 c3d4 c6a5 c4d3 d7d5"],["Scotch Gambit","Bc5 Bb6 Nge7 d5 Na5 Bd3","Nero senza spazio.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 f8c5 c2c3 c5b6 c3d4 g8e7 d4d5 c6a5 c4d3"],["Scotch Gambit","Bc5 Bb6 Nge7 d5 Nb4 Bd3 Qb3","Linea Qb3 molto forte.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 f8c5 c2c3 c5b6 c3d4 g8e7 d4d5 c6b4 c4d3"],["Scotch Gambit","Bc5 Bb6 Nf6 e5 Ne4 Qe2","Contro ...Ne4: Qe2.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 f8c5 c2c3 c5b6 c3d4 g8f6 e4e5 f6e4 d1e2"],["Scotch Gambit","Bc5 Bb6 Nf6 e5 Ba5 Nc3 Ne4 O-O","Nero bloccato.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 f8c5 c2c3 c5b6 c3d4 g8f6 e4e5 b6a5 b1c3 f6e4 e1g1"],["Scotch Gambit","Bc5 Bb6 Nf6 e5 d5 attack","Linea d5, Qa4, O-O, fxg7, Bg5.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 f8c5 c2c3 c5b6 c3d4 g8f6 e4e5 d7d5 e5f6 d5c4 d4d5 c6b4 d1a4 c7c6 e1g1 b4d5 f6g7 h8g8 c1g5"],["Scotch Gambit","Bc5 Nf6 b4 Bb6 e5 Ne4 line","Linea dinamica contro ...Ne4.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 f8c5 c2c3 g8f6 b2b4 c5b6 e4e5 f6e4 c4d5 e4c3 b1c3 d4c3 c1g5 c6e7 e1g1"],["Scotch Gambit","Bc5 Nf6 b4 Bb6 e5 d5 Kf8 b5","...Kf8 perde terreno dopo b5.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 f8c5 c2c3 g8f6 b2b4 c5b6 e4e5 d7d5 e5f6 d5c4 d1e2 e8f8 b4b5"],["Scotch Gambit","Bc5 Nf6 b4 Bb6 e5 d5 Be6 Na5","...Be6, b5, ...Na5, fxg7 e cxd4.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 f8c5 c2c3 g8f6 b2b4 c5b6 e4e5 d7d5 e5f6 d5c4 d1e2 c8e6 b4b5 c6a5 f6g7 h8g8 c3d4"],["Scotch Gambit","Bc5 Nf6 b4 Bb6 e5 d5 Be6 b5","Contro ...d3: Qe4.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 f8c5 c2c3 g8f6 b2b4 c5b6 e4e5 d7d5 e5f6 d5c4 d1e2 c8e6 b4b5"],["Scotch Gambit","Bc5 Nf6 b4 Bb6 e5 d5 Be6 Nb8","Contro ...Nb8: fxg7 e cxd4.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 f8c5 c2c3 g8f6 b2b4 c5b6 e4e5 d7d5 e5f6 d5c4 d1e2 c8e6 b4b5 c6b8 f6g7 h8g8 c3d4"],["Scotch Gambit","Bc5 Nf6 b4 Be7 e5 Ne4","Patta dinamica con attacco.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 f8c5 c2c3 g8f6 b2b4 c5e7 e4e5 f6e4 b4b5 c6a5 c4d3 e4c3 b1c3 d4c3"],["Scotch Gambit","Bc5 Nf6 b4 Be7 e5 Ng4","Contro ...Ng4: cxd4.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 f8c5 c2c3 g8f6 b2b4 c5e7 e4e5 f6g4 c3d4"],["Scotch Gambit","Bc5 Nf6 b4 Be7 e5 d5 Ne7 Bd3","...Ne7 → Bd3.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 f8c5 c2c3 g8f6 b2b4 c5e7 e4e5 d7d5 e5f6 e7f6 b4b5 c6e7 c4d3"],["Scotch Gambit","Bc5 Nf6 b4 Be7 e5 d5 Na5 Bd3","...Na5 → Bd3.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 f8c5 c2c3 g8f6 b2b4 c5e7 e4e5 d7d5 e5f6 e7f6 b4b5 c6a5 c4d3"],["Scotch Gambit","Bc5 dxc3 full tactic","Bxf7+ Kxf7 Qd5+.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 f8c5 c2c3 d4c3 c4f7 e8f7 d1d5"],["Scotch Gambit","Bc5 d6 cxd4 Bb4 Nc3","Sviluppo rapido.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 f8c5 c2c3 d7d6 c3d4 c5b4 b1c3"],["Scotch Gambit","Bc5 d6 cxd4 Bb6 Bb5","Rientro in strutture note.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 f8c5 c2c3 d7d6 c3d4 c5b6 c4b5"],["Scotch Gambit","Bc5 Qf6 b4 Bb6 e5","Scaccia la donna e arrocca.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 f8c5 c2c3 d8f6 b2b4 c5b6 e4e5"],["Scotch Gambit","Bc5 Qf6 b4 Nxe5 Qe2","Nxe5? Qe2 e il cavallo cade.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 f8c5 c2c3 d8f6 b2b4 c6e5 d1e2"],["Scotch Gambit","4...d6 Be7 Nxc6 b3 Bb2","Piano personale: Nxc6, b3, Bb2.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 d7d6 f3d4 f8e7 d4c6 b7c6 b2b3"],["Scotch Gambit","4...d6 g6 Nxc6 b3 Bb2","Piano personale: Nxc6, b3, Bb2.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 d7d6 f3d4 g7g6 d4c6 b7c6 b2b3"],["Scotch Gambit","4...d6 a6 Nxc6 b3 Bb2","Piano personale: Nxc6, b3, Bb2.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 d7d6 f3d4 a7a6 d4c6 b7c6 b2b3"],["Scotch Gambit","4...d6 Nge7 Nxc6 b3 Bb2","Piano personale: Nxc6, b3, Bb2.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 d7d6 f3d4 g8e7 d4c6 b7c6 b2b3"],["Scotch Gambit","4...Nf6 O-O d6 Nxd4","Sviluppo naturale con e5/Bf4.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 g8f6 e1g1 d7d6 f3d4"],["Scotch Gambit","4...Nf6 O-O Bc5 e5","Max Lange.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 g8f6 e1g1 f8c5 e4e5"],["Scotch Gambit","4...Nf6 O-O Be7 Nxd4","Sviluppo e spinte e5/f4-f5.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 g8f6 e1g1 f8e7 f3d4"],["Scotch Gambit","4...Nf6 O-O d5 exd5 Nxd5 Ng5","Fried Liver style.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 g8f6 e1g1 d7d5 e4d5 f6d5 f3g5"],["Scotch Gambit","4...Nf6 O-O h6 Nxd4","Rientro strutture note.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 g8f6 e1g1 h7h6 f3d4"],["Scotch Gambit","Nakhmanson dxc3 Bxf7 Ke7 Bd5","...Ke7: Bd5 molto forte.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 g8f6 e1g1 f6e4 b1c3 d4c3 c4f7 e8e7 f7d5"],["Scotch Gambit","Nakhmanson dxc3 Kxf7 Qd5 Ke8 Re1","Qd5+ e Re1.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 g8f6 e1g1 f6e4 b1c3 d4c3 c4f7 e8f7 d1d5 f7e8 f1e1"],["Scotch Gambit","Nakhmanson dxc3 Kxf7 Qd5 Kf6 Qxe4 Be7 b4","Difesa critica ...Kf6, poi b4.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 g8f6 e1g1 f6e4 b1c3 d4c3 c4f7 e8f7 d1d5 f7f6 d5e4 f8e7 b2b4"],["Scotch Gambit","Nakhmanson Nxc3 dxc3 Ng5","Contro ...dxc3: Ng5.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 g8f6 e1g1 f6e4 b1c3 e4c3 b2c3 d4c3 f3g5"],["Scotch Gambit","Nakhmanson Nxc3 d5 Bb5 Bd7 Bxc6 Bxc6 Re1","Se ...Bxc6, Re1+ e Ba3.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 g8f6 e1g1 f6e4 b1c3 e4c3 b2c3 d7d5 c4b5 c8d7 b5c6 d7c6 f1e1"],["Scotch Gambit","Nakhmanson Nxc3 Be7 cxd4","Ramo più tranquillo.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 g8f6 e1g1 f6e4 b1c3 e4c3 b2c3 f8e7 c3d4"],["Scotch Gambit","Nakhmanson Nxc3 h6 Nxd4 Be7 Qh5 O-O Bxh6","Bxh6 e Qg6+ se ...gxh6.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 g8f6 e1g1 f6e4 b1c3 e4c3 b2c3 h7h6 f3d4 f8e7 d1h5 e8g8 c1h6"],["Scotch Gambit","Nakhmanson d5 Bxd5","Ramo semplificato.","e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f1c4 g8f6 e1g1 f6e4 b1c3 d7d5 c4d5"],["Sicilian French / Taimanov / Kan","Nc6 Nf6 Bb7 c4 Nb6 Nd6+","Nd6+ e pressione.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 b8c6 b1c3 g8f6 d4c6 b7c6 e4e5 f6d5 c3e4 c8b7 c2c4 d5b6 e4d6"],["Sicilian French / Taimanov / Kan","Nc6 Nf6 Bb7 c4 Nb4 c5 Qb8 Nd6+","Linea c5 e Nd6+.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 b8c6 b1c3 g8f6 d4c6 b7c6 e4e5 f6d5 c3e4 c8b7 c2c4 d5b4 c4c5 d8b8 e4d6"],["Sicilian French / Taimanov / Kan","Nc6 Nf6 Qc7 f4 c4 Bb4 Ke2","Contro ...Bb4+: Ke2.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 b8c6 b1c3 g8f6 d4c6 b7c6 e4e5 f6d5 c3e4 d8c7 f2f4 a7a6 c2c4 f8b4 e1e2"],["Sicilian French / Taimanov / Kan","Nc6 Nf6 Qc7 f4 Qa5 Bd2 c4","Bd2 e c4.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 b8c6 b1c3 g8f6 d4c6 b7c6 e4e5 f6d5 c3e4 d8c7 f2f4 c7a5 c1d2 a5c7 c2c4"],["Sicilian French / Taimanov / Kan","Nc6 Nf6 Qb6 a3 c4","Prima a3, poi c4.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 b8c6 b1c3 g8f6 d4c6 b7c6 e4e5 f6d5 c3e4 d8b6 a2a3 d7d6 c2c4"],["Sicilian French / Taimanov / Kan","Nc6 Nf6 Qa5 Bd2 Qb6 Bd3","Qa5+ → Bd2; Qb6 → Bd3.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 b8c6 b1c3 g8f6 d4c6 b7c6 e4e5 f6d5 c3e4 d8a5 c1d2 a5b6 f1d3"],["Sicilian French / Taimanov / Kan","Nc6 Nf6 Qa5 Bd2 Qc7 Qh5 c4","Qh5 e c4.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 b8c6 b1c3 g8f6 d4c6 b7c6 e4e5 f6d5 c3e4 d8a5 c1d2 a5c7 d1h5 a7a6 c2c4"],["Sicilian French / Taimanov / Kan","Nc6 Nf6 Qa5 Bd2 Qd8 c4","Qa5+ → Bd2, Qd8 → c4.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 b8c6 b1c3 g8f6 d4c6 b7c6 e4e5 f6d5 c3e4 d8a5 c1d2 a5d8 c2c4"],["Sicilian French / Taimanov / Kan","Nc6 Nf6 c5 c4 Nb6 Nd6+","Nd6+ su Nb6.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 b8c6 b1c3 g8f6 d4c6 b7c6 e4e5 f6d5 c3e4 c6c5 c2c4 d5b6 e4d6"],["Sicilian French / Taimanov / Kan","Nc6 Nf6 c5 c4 Nb4 a3","Scaccia il cavallo.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 b8c6 b1c3 g8f6 d4c6 b7c6 e4e5 f6d5 c3e4 c6c5 c2c4 d5b4 a2a3"],["Sicilian French / Taimanov / Kan","Nc6 Nf6 d6 Nxd6","Nxd6+ tattico.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 b8c6 b1c3 g8f6 d4c6 b7c6 e4e5 f6d5 c3e4 d7d6 e4d6"],["Sicilian French / Taimanov / Kan","Nc6 Nf6 Be7 c4 Nb6 Nd6+","c4 e Nd6+.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 b8c6 b1c3 g8f6 d4c6 b7c6 e4e5 f6d5 c3e4 f8e7 c2c4 d5b6 e4d6"],["Sicilian French / Taimanov / Kan","Nc6 Bc5 Ndb5 d6 Bf4 e5 Be3","Bf4 e Be3.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 b8c6 b1c3 f8c5 d4b5 d7d6 c1f4 e6e5 f4e3"],["Sicilian French / Taimanov / Kan","Nc6 Bc5 Ndb5 Nf6 Nd6+","Nd6+.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 b8c6 b1c3 f8c5 d4b5 g8f6 b5d6"],["Sicilian French / Taimanov / Kan","Nc6 Bb4 Nxc6 dxc6 Qxd8 e5","Cambio donne e e5.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 b8c6 b1c3 f8b4 d4c6 d7c6 d1d8 e8d8 e4e5"],["Sicilian French / Taimanov / Kan","Nc6 Bb4 Nxc6 bxc6 Qd4 Bf8","Qd4 e sviluppo.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 b8c6 b1c3 f8b4 d4c6 b7c6 d1d4 b4f8"],["Sicilian French / Taimanov / Kan","Nc6 Bb4 Nxc6 bxc6 Qd4 Bxc3 Qxc3 Nf6 e5","Qxc3 e e5.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 b8c6 b1c3 f8b4 d4c6 b7c6 d1d4 b4c3 d4c3 g8f6 e4e5"],["Sicilian French / Taimanov / Kan","Nc6 Bb4 Nxc6 bxc6 Qd4 Bxc3 Qxc3 Qf6 e5","Qxc3 e e5 contro ...Qf6.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 b8c6 b1c3 f8b4 d4c6 b7c6 d1d4 b4c3 d4c3 d8f6 e4e5"],["Sicilian French / Taimanov / Kan","Nc6 a6 g4 h6 Be3 Nf6 a3","Contro ...a6, g4; con ...h6/...Nf6 ricordare a3.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 b8c6 b1c3 a7a6 g2g4 h7h6 c1e3 g8f6 a2a3"],["Sicilian French / Taimanov / Kan","Nc6 d6 g4","g4 e attacco.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 b8c6 b1c3 d7d6 g2g4"],["Sicilian French / Taimanov / Kan","Nc6 Qc7 Ndb5 Qd8 Bf4 e5 Nd5","Nd5 tattico.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 b8c6 b1c3 d8c7 d4b5 c7d8 c1f4 e6e5 c3d5"],["Sicilian French / Taimanov / Kan","Nc6 Qc7 Ndb5 Qb8 f4","f4 e attacco.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 b8c6 b1c3 d8c7 d4b5 c7b8 f2f4"],["Sicilian French / Taimanov / Kan","Nc6 Qc7 Ndb5 Qe5 f4 Qb8 e5","f4, Qb8, e5.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 b8c6 b1c3 d8c7 d4b5 c7e5 f2f4 e5b8 e4e5"],["Sicilian French / Taimanov / Kan","Nf6 Bc5 e5 Nd5 Nxd5 Nf5","e5 e Nf5.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 g8f6 b1c3 f8c5 e4e5 f6d5 c3d5 e6d5 d4f5"],["Sicilian French / Taimanov / Kan","Nf6 Bc5 Qb6 Ndb5 Nd5 Ne4","Ndb5 e Ne4.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 g8f6 b1c3 f8c5 e4e5 d8b6 d4b5 f6d5 c3e4"],["Sicilian French / Taimanov / Kan","Nf6 Bc5 Qb6 Ndb5 a6 Nd6+","Nd6+.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 g8f6 b1c3 f8c5 e4e5 d8b6 d4b5 a7a6 b5d6"],["Sicilian French / Taimanov / Kan","Nf6 Bb4 e5 Nd5 Qg4 Nxc3 Qxg7","Qg4 e Qxg7.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 g8f6 b1c3 f8b4 e4e5 f6d5 d1g4 d5c3 g4g7"],["Sicilian French / Taimanov / Kan","Nf6 Bb4 e5 Nd5 Qg4 O-O Bh6","Bh6 contro arrocco.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 g8f6 b1c3 f8b4 e4e5 f6d5 d1g4 e8g8 c1h6"],["Sicilian French / Taimanov / Kan","Nf6 Bb4 e5 Nd5 Qg4 Kf8 Bd3","Difesa ...Kf8: Bd3.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 g8f6 b1c3 f8b4 e4e5 f6d5 d1g4 e8f8 f1d3"],["Sicilian French / Taimanov / Kan","Nf6 d6 g4 Be7 g5 Nfd7 Be3 Bxg5 Nxe6","Trick Nxe6.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 g8f6 b1c3 d7d6 g2g4 f8e7 g4g5 f6d7 c1e3 e7g5 d4e6"],["Sicilian French / Taimanov / Kan","Nf6 a6 e5 Nd5 Nxd5","e5 e scambi centrali.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6 e4e5 f6d5 c3d5 e6d5 d4f3"],["Sicilian French / Taimanov / Kan","Nf6 a6 e5 Ng8 Bf4","Vantaggio di sviluppo.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6 e4e5 f6g8 c1f4"],["Sicilian French / Taimanov / Kan","Nf6 Qc7 Ndb5","Scaccia la donna.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 g8f6 b1c3 d8c7 d4b5"],["Sicilian French / Taimanov / Kan","Nf6 Qb6 e5 Nd5 Nxd5 Nb3","Pressione su d5.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 g8f6 b1c3 d8b6 e4e5 f6d5 c3d5 e6d5 d4b3"],["Sicilian French / Taimanov / Kan","Nf6 Qa5 Nb3 Qb6 e5","Nb3 scaccia la donna e e5.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 g8f6 b1c3 d8a5 d4b3 a5b6 e4e5"],["Sicilian French / Taimanov / Kan","Nf6 Qa5 Nb3 Qd8 e5","Nb3 e e5.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 g8f6 b1c3 d8a5 d4b3 a5d8 e4e5"],["Sicilian French / Taimanov / Kan","Direct Bc5 Nc3 Qb6 Na4 Qa5 Nc3","Ripetizione/patta se insiste.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 f8c5 b1c3 d8b6 c3a4 b6a5 a4c3"],["Sveshnikov / Classical","Classical g6 Yugoslav","Trasposizione Dragon/Yugoslav.","e2e4 c7c5 g1f3 b8c6 d2d4 c5d4 f3d4 g7g6 b1c3 f8g7 c1e3"],["Sveshnikov / Classical","Classical Nf6 d6 g6 Yugoslav","Yugoslav.","e2e4 c7c5 g1f3 b8c6 d2d4 c5d4 f3d4 g8f6 b1c3 d7d6 f1c4 g7g6 c1e3 f8g7 f2f3 e8g8 d1d2"],["Sveshnikov / Classical","Classical Nf6 d6 e6 Be3 Qe2 O-O-O","Be3, Qe2, O-O-O.","e2e4 c7c5 g1f3 b8c6 d2d4 c5d4 f3d4 g8f6 b1c3 d7d6 f1c4 e7e6 c1e3 f8e7 d1e2 e8g8 e1c1"],["Sveshnikov / Classical","Classical Nf6 d6 e5 Nxc6 Be3 Qe2","Nxc6, Be3, Qe2.","e2e4 c7c5 g1f3 b8c6 d2d4 c5d4 f3d4 g8f6 b1c3 d7d6 f1c4 e7e5 d4c6 b7c6 c1e3 f8e7 d1e2"],["Sveshnikov / Classical","Classical Nf6 d6 Bd7 Be3 Qe2","Be3 e Qe2.","e2e4 c7c5 g1f3 b8c6 d2d4 c5d4 f3d4 g8f6 b1c3 d7d6 f1c4 c8d7 c1e3"],["Sveshnikov / Classical","Classical Nf6 d6 Qc7 Ndb5 Q move Nd5","Ndb5 e Nd5.","e2e4 c7c5 g1f3 b8c6 d2d4 c5d4 f3d4 g8f6 b1c3 d7d6 f1c4 d8c7 d4b5 c7b8 c3d5"],["Sveshnikov / Classical","Classical Nf6 d6 a6 Nxc6 e5","Trasposizione nota.","e2e4 c7c5 g1f3 b8c6 d2d4 c5d4 f3d4 g8f6 b1c3 d7d6 f1c4 a7a6 d4c6 b7c6 e4e5"],["Sveshnikov / Classical","Sveshnikov Nf6 N1c3 h6 Nd6","Nd6+.","e2e4 c7c5 g1f3 b8c6 d2d4 c5d4 f3d4 e7e5 d4b5 g8f6 b1c3 h7h6 b5d6"],["Sveshnikov / Classical","Sveshnikov Nf6 N1c3 a6 Nd6","Nd6+.","e2e4 c7c5 g1f3 b8c6 d2d4 c5d4 f3d4 e7e5 d4b5 g8f6 b1c3 a7a6 b5d6"],["Sveshnikov / Classical","Sveshnikov Nf6 N1c3 Bb4 a3","a3 e arrocco lungo dopo gli scambi.","e2e4 c7c5 g1f3 b8c6 d2d4 c5d4 f3d4 e7e5 d4b5 g8f6 b1c3 f8b4 a2a3"],["Sveshnikov / Classical","Sveshnikov d6 Bg5 Be7 Bxf6 Bxf6 Nd6","Bxf6 e Nd6+.","e2e4 c7c5 g1f3 b8c6 d2d4 c5d4 f3d4 e7e5 d4b5 g8f6 b1c3 d7d6 c1g5 f8e7 g5f6 e7f6 b5d6"],["Sveshnikov / Classical","Sveshnikov d6 Bg5 Be7 Bxf6 gxf6 Nd5","gxf6 → Nd5.","e2e4 c7c5 g1f3 b8c6 d2d4 c5d4 f3d4 e7e5 d4b5 g8f6 b1c3 d7d6 c1g5 f8e7 g5f6 g7f6 c3d5"],["Sveshnikov / Classical","Sveshnikov d6 Bg5 h6 Bxf6 gxf6 Nd5","h6 → Bxf6, gxf6, Nd5.","e2e4 c7c5 g1f3 b8c6 d2d4 c5d4 f3d4 e7e5 d4b5 g8f6 b1c3 d7d6 c1g5 h7h6 g5f6 g7f6 c3d5"],["Sveshnikov / Classical","Sveshnikov d6 Bg5 Be6 Nd5 Bxd5 exd5","Nd5 e struttura dominante.","e2e4 c7c5 g1f3 b8c6 d2d4 c5d4 f3d4 e7e5 d4b5 g8f6 b1c3 d7d6 c1g5 c8e6 c3d5 e6d5 e4d5"],["Sveshnikov / Classical","Sveshnikov a6 b5 Bxf6 Qxf6 Nd5 Qd8 Bxb5","Linea ...b5, Qxf6, Nd5.","e2e4 c7c5 g1f3 b8c6 d2d4 c5d4 f3d4 e7e5 d4b5 g8f6 b1c3 d7d6 c1g5 a7a6 b5a3 b7b5 g5f6 d8f6 c3d5 f6d8 f1b5"],["Sveshnikov / Classical","Sveshnikov a6 b5 Bxf6 gxf6 Nd5 f5 Bxb5","gxf6, Nd5, pressione ala di donna.","e2e4 c7c5 g1f3 b8c6 d2d4 c5d4 f3d4 e7e5 d4b5 g8f6 b1c3 d7d6 c1g5 a7a6 b5a3 b7b5 g5f6 g7f6 c3d5 f6f5 f1b5 a6b5"],["Sveshnikov / Classical","Sveshnikov a6 Be6 Nc4 Bxf6","Nc4 e Bxf6.","e2e4 c7c5 g1f3 b8c6 d2d4 c5d4 f3d4 e7e5 d4b5 g8f6 b1c3 d7d6 c1g5 a7a6 b5a3 c8e6 a3c4"],["Sveshnikov / Classical","Sveshnikov a6 Nd4 Nc4 Bxf6","Nc4 e Bxf6.","e2e4 c7c5 g1f3 b8c6 d2d4 c5d4 f3d4 e7e5 d4b5 g8f6 b1c3 d7d6 c1g5 a7a6 b5a3 c6d4 a3c4"],["Sveshnikov / Classical","Sveshnikov a6 h6 Bxf6 Qxf6 Nd5 Nc4","Qxf6 → Nd5/Nc4.","e2e4 c7c5 g1f3 b8c6 d2d4 c5d4 f3d4 e7e5 d4b5 g8f6 b1c3 d7d6 c1g5 a7a6 b5a3 h7h6 g5f6 d8f6 c3d5"],["Sveshnikov / Classical","Sveshnikov a6 h6 Bxf6 gxf6 Nc4 Nd5","gxf6 → Nc4 poi Nd5.","e2e4 c7c5 g1f3 b8c6 d2d4 c5d4 f3d4 e7e5 d4b5 g8f6 b1c3 d7d6 c1g5 a7a6 b5a3 h7h6 g5f6 g7f6 a3c4"],["Sveshnikov / Classical","Rauzer h6 Bxf6 Qxf6 Ndb5","Bxf6, Ndb5.","e2e4 c7c5 g1f3 b8c6 d2d4 c5d4 f3d4 d7d6 b1c3 g8f6 c1g5 e7e6 d1d2 h7h6 g5f6 d8f6 d4b5"],["Sveshnikov / Classical","Rauzer h6 Bxf6 gxf6 O-O-O","gxf6 → O-O-O.","e2e4 c7c5 g1f3 b8c6 d2d4 c5d4 f3d4 d7d6 b1c3 g8f6 c1g5 e7e6 d1d2 h7h6 g5f6 g7f6 e1c1"],["Sveshnikov / Classical","Rauzer a6 O-O-O h6 Nxc6 f4 d5 Qe3","Nxc6, f4, Qe3.","e2e4 c7c5 g1f3 b8c6 d2d4 c5d4 f3d4 d7d6 b1c3 g8f6 c1g5 e7e6 d1d2 a7a6 e1c1 h7h6 d4c6 b7c6 f2f4 d6d5 d2e3"],["Sveshnikov / Classical","Rauzer a6 O-O-O Be7","O-O-O e attacco ala di re.","e2e4 c7c5 g1f3 b8c6 d2d4 c5d4 f3d4 d7d6 b1c3 g8f6 c1g5 e7e6 d1d2 a7a6 e1c1 f8e7"],["Caro-Kann 3.f3","dxe4 Nf6 e5 Nd5 c4","Struttura tipo Alekhine.","e2e4 c7c6 d2d4 d7d5 f2f3 d5e4 f3e4 g8f6 e4e5 f6d5 c2c4"],["Caro-Kann 3.f3","dxe4 e5 Bg4 Bc4 Nd7 O-O Ngf6 Bg5","Difesa seria ...Nd7.","e2e4 c7c6 d2d4 d7d5 f2f3 d5e4 f3e4 e7e5 g1f3 c8g4 f1c4 b8d7 e1g1 g8f6 c1g5"],["Caro-Kann 3.f3","dxe4 e5 Bg4 Bc4 Nf6 Bxf7","Bxf7+ contro deviazioni.","e2e4 c7c6 d2d4 d7d5 f2f3 d5e4 f3e4 e7e5 g1f3 c8g4 f1c4 g8f6 c4f7"],["Caro-Kann 3.f3","dxe4 e5 Bg4 Bc4 exd4 Bxf7","Bxf7+ contro deviazioni.","e2e4 c7c6 d2d4 d7d5 f2f3 d5e4 f3e4 e7e5 g1f3 c8g4 f1c4 e5d4 c4f7"],["Caro-Kann 3.f3","dxe4 e5 Bg4 Bc4 Qxd4 Bxf7","Bxf7+ contro deviazioni.","e2e4 c7c6 d2d4 d7d5 f2f3 d5e4 f3e4 e7e5 g1f3 c8g4 f1c4 d8d4 c4f7"],["Caro-Kann 3.f3","dxe4 e5 Nf6 Bc4 exd4 O-O Be7 Ng5 Nxf7","Ng5 e Nxf7.","e2e4 c7c6 d2d4 d7d5 f2f3 d5e4 f3e4 e7e5 g1f3 g8f6 f1c4 e5d4 e1g1 f8e7 f3g5 e8g8 g5f7"],["Caro-Kann 3.f3","dxe4 e5 Nf6 Bc4 exd4 O-O Bc5 Ng5 e5","Attacco con Ng5/e5.","e2e4 c7c6 d2d4 d7d5 f2f3 d5e4 f3e4 e7e5 g1f3 g8f6 f1c4 e5d4 e1g1 f8c5 f3g5 e8g8 e4e5"],["Caro-Kann 3.f3","dxe4 e5 Nf6 Bc4 exd4 O-O Nbd7 Ng5","Ng5 e motivi f7.","e2e4 c7c6 d2d4 d7d5 f2f3 d5e4 f3e4 e7e5 g1f3 g8f6 f1c4 e5d4 e1g1 b8d7 f3g5"],["Caro-Kann 3.f3","dxe4 e5 exd4 Bc4 Nbd7 e5 Nd5 Bg5","Nbd7 → e5, Nd5, Bg5.","e2e4 c7c6 d2d4 d7d5 f2f3 d5e4 f3e4 e7e5 g1f3 e5d4 f1c4 b8d7 e4e5"],["Caro-Kann 3.f3","Nf6 e5 Nfd7 f4","Trasposizione Steinitz.","e2e4 c7c6 d2d4 d7d5 f2f3 g8f6 e4e5 f6d7 f3f4"],["Caro-Kann 3.f3","e5 dxe5 Qb6 Nc3 Bc5 Na4 Qa5 c3","Linea Qa5+ → c3.","e2e4 c7c6 d2d4 d7d5 f2f3 e7e5 d4e5 d8b6 b1c3 f8c5 c3a4 b6a5 c2c3"],["Caro-Kann 3.f3","e5 dxe5 Bc5 Nc3 Qb6 Na4 Bf2 Ke2","Bf2+ → Ke2.","e2e4 c7c6 d2d4 d7d5 f2f3 e7e5 d4e5 f8c5 b1c3 d8b6 c3a4 c5f2 e1e2"],["Caro-Kann 3.f3","Qb6 Nf6 e5","Trasposizione Steinitz.","e2e4 c7c6 d2d4 d7d5 f2f3 d8b6 b1c3 g8f6 e4e5"],["Caro-Kann 3.f3","Qb6 dxe4 Bc4 exf3 Nxf3","Nxf3, O-O, Kh1.","e2e4 c7c6 d2d4 d7d5 f2f3 d8b6 b1c3 d5e4 f1c4 e4f3 g1f3"],["Caro-Kann 3.f3","Nd7 e5","Trasposizione Steinitz.","e2e4 c7c6 d2d4 d7d5 f2f3 b8d7 e4e5"],["French Advance Na3","Qb6 Na3 Nge7 dxc5","Nge7 può permettere dxc5.","e2e4 e7e6 d2d4 d7d5 e4e5 c7c5 c2c3 b8c6 g1f3 d8b6 b1a3 g8e7 d4c5"],["French Advance Na3","Qb6 Na3 Bd7 Nc2 Bd3","Nc2 e Bd3.","e2e4 e7e6 d2d4 d7d5 e4e5 c7c5 c2c3 b8c6 g1f3 d8b6 b1a3 c8d7 a3c2"],["French Advance Na3","Qb6 Na3 f6 Nc2 Bd3","Nc2 e Bd3.","e2e4 e7e6 d2d4 d7d5 e4e5 c7c5 c2c3 b8c6 g1f3 d8b6 b1a3 f7f6 a3c2"],["French Advance Na3","Qb6 Na3 Bd7 Nc2 c4 Be2 b3","Ritirata e b3 contro ...c4.","e2e4 e7e6 d2d4 d7d5 e4e5 c7c5 c2c3 b8c6 g1f3 d8b6 b1a3 c8d7 a3c2 c5c4 f1e2"],["French Advance Na3","cxd4 Nge7 Nc2 Nf5 Bd3","Pedone d4 avvelenato.","e2e4 e7e6 d2d4 d7d5 e4e5 c7c5 c2c3 b8c6 g1f3 d8b6 b1a3 c5d4 c3d4 g8e7 a3c2 e7f5 f1d3"],["French Advance Na3","cxd4 Nge7 Nc2 Nf5 Bd3 Bd7 O-O","Setup della trappola d4.","e2e4 e7e6 d2d4 d7d5 e4e5 c7c5 c2c3 b8c6 g1f3 d8b6 b1a3 c5d4 c3d4 g8e7 a3c2 e7f5 f1d3 c8d7 e1g1"],["French Advance Na3","cxd4 Bb4 Bd2 Bxc3 Qxd2","Ricattura di donna.","e2e4 e7e6 d2d4 d7d5 e4e5 c7c5 c2c3 b8c6 g1f3 d8b6 b1a3 c5d4 c3d4 f8b4 c1d2 b4d2 d1d2"],["French Advance Na3","cxd4 Bb4 Bd2 Nxd4 Qxd4 Qa4","Trappola Qa4+.","e2e4 e7e6 d2d4 d7d5 e4e5 c7c5 c2c3 b8c6 g1f3 d8b6 b1a3 c5d4 c3d4 f8b4 c1d2 c6d4"],["French Advance Na3","cxd4 Bxa3 bxa3 Nge7 Bd3 O-O Bxh7","Tema Bxh7+.","e2e4 e7e6 d2d4 d7d5 e4e5 c7c5 c2c3 b8c6 g1f3 d8b6 b1a3 c5d4 c3d4 f8a3 b2a3 g8e7 f1d3 e8g8 d3h7"],["French Advance Na3","cxd4 Bxa3 bxa3 Qa5 Bd2 Qxa3 Qb1","Qb1! contro Qxa3.","e2e4 e7e6 d2d4 d7d5 e4e5 c7c5 c2c3 b8c6 g1f3 d8b6 b1a3 c5d4 c3d4 f8a3 b2a3 b6a5 c1d2 a5a3 d1b1"],["French Advance Na3","Ng6 immediate h4 h5","h4 e h5 contro Ng6.","e2e4 e7e6 d2d4 d7d5 e4e5 c7c5 c2c3 b8c6 g1f3 d8b6 b1a3 g8e7 a3c2 e7g6 h2h4 a7a6 h4h5"],["French Advance Na3","Poisoned d4 no a6 g4","Se non ...a6, g4.","e2e4 e7e6 d2d4 d7d5 e4e5 c7c5 c2c3 c8d7 g1f3 b8c6 b1a3 c5d4 c3d4 g8e7 a3c2 e7f5 f1d3 d8b6 e1g1 f8e7 g2g4"],["French Advance Na3","Poisoned d4 a6 Kh1 Be7 g4 line","Dopo a6: Kh1, poi g4 e Rc1.","e2e4 e7e6 d2d4 d7d5 e4e5 c7c5 c2c3 c8d7 g1f3 b8c6 b1a3 c5d4 c3d4 g8e7 a3c2 e7f5 f1d3 d8b6 e1g1 a7a6 g1h1 f8e7 g2g4 f5d4 c2d4 c6d4 c1e3 e7c5 a1c1"],["French Advance Na3","Poisoned d4 a6 Kh1 Rc8 Rb1 g4","Se ...Rc8, Rb1 prima di g4.","e2e4 e7e6 d2d4 d7d5 e4e5 c7c5 c2c3 c8d7 g1f3 b8c6 b1a3 c5d4 c3d4 g8e7 a3c2 e7f5 f1d3 d8b6 e1g1 a7a6 g1h1 a8c8 a1b1 f8e7 g2g4"],["Pirc / Modern","d6 e5 Nf3 exd4 Bc4","Trasposizione Scotch/Morphy.","e2e4 d7d6 d2d4 e7e5 g1f3 e5d4 f1c4"],["Pirc / Modern","Nf6 e5 dxe5 dxe5 Qxd8","Cambio donne.","e2e4 d7d6 d2d4 g8f6 b1c3 e7e5 d4e5 d6e5 d1d8"],["Pirc / Modern","Nf6 e6 f4 d5 e5","Contro ...d5: e5.","e2e4 d7d6 d2d4 g8f6 b1c3 e7e6 f2f4 d6d5 e4e5"],["Pirc / Modern","Nf6 e6 f4 c5 d5","Contro ...c5: d5.","e2e4 d7d6 d2d4 g8f6 b1c3 e7e6 f2f4 c7c5 d4d5"],["Pirc / Modern","Chinese O-O g5 Nfd7 h4","g5 e h4.","e2e4 d7d6 d2d4 g8f6 b1c3 g7g6 f1e2 f8g7 g2g4 e8g8 g4g5 f6d7 h2h4"],["Pirc / Modern","Chinese O-O g5 Ne8 h4","g5 e h4.","e2e4 d7d6 d2d4 g8f6 b1c3 g7g6 f1e2 f8g7 g2g4 e8g8 g4g5 f6e8 h2h4"],["Pirc / Modern","Chinese e6 h4","h4.","e2e4 d7d6 d2d4 g8f6 b1c3 g7g6 f1e2 f8g7 g2g4 e7e6 h2h4"],["Pirc / Modern","Chinese e5 dxe5 dxe5 Qxd8 g5","Cambio donne e g5.","e2e4 d7d6 d2d4 g8f6 b1c3 g7g6 f1e2 f8g7 g2g4 e7e5 d4e5 d6e5 d1d8 e8d8 g4g5"],["Sicilian French / Taimanov / Kan","Direct d6 Nc3 Nf6 g4","g4 contro ...d6.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 d7d6 b1c3 g8f6 g2g4"],["Sicilian French / Taimanov / Kan","Direct d6 Nc3 Nc6 g4","g4 contro ...d6.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 d7d6 b1c3 b8c6 g2g4"],["Sicilian French / Taimanov / Kan","Direct d6 Nc3 a6 g4","g4 contro ...d6.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 d7d6 b1c3 a7a6 g2g4"],["Sicilian French / Taimanov / Kan","Direct d6 Nc3 Be7 g4","g4 contro ...d6.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 d7d6 b1c3 f8e7 g2g4"],["Sicilian French / Taimanov / Kan","Direct d6 Nc3 Bd7 g4","g4 contro ...d6.","e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 d7d6 b1c3 c8d7 g2g4"]];
+const L=RAW.map((x,i)=>({id:i,g:x[0],n:x[1],t:x[2],m:x[3].split(" ")}));
+const F="abcdefgh";
+const S={K:"♚",Q:"♛",R:"♜",B:"♝",N:"♞",P:"♟",k:"♚",q:"♛",r:"♜",b:"♝",n:"♞",p:"♟"};
+
+let B={}, sel=null, flipped=false, locked=false, lastA=null,lastB=null;
+let good=0,bad=0,streak=0;
+let active=[], ply=0, currentGroup="", startPrefix=[], solvedLast=false;
+
+const $=id=>document.getElementById(id);
+
+function initial(){
+ const b={};
+ for(const f of F){b[f+"2"]="P";b[f+"7"]="p"}
+ Object.assign(b,{a1:"R",b1:"N",c1:"B",d1:"Q",e1:"K",f1:"B",g1:"N",h1:"R",
+                  a8:"r",b8:"n",c8:"b",d8:"q",e8:"k",f8:"b",g8:"n",h8:"r"});
+ return b;
+}
+function move(b,m){
+ const a=m.slice(0,2),z=m.slice(2,4),promo=m[4],pc=b[a];
+ if(!pc) return false;
+ delete b[a];
+ if((pc==="P"||pc==="p") && a[0]!==z[0] && !b[z]){
+   const rr=pc==="P"?Number(z[1])-1:Number(z[1])+1;
+   delete b[z[0]+rr];
+ }
+ b[z]=promo?(pc===pc.toUpperCase()?promo.toUpperCase():promo.toLowerCase()):pc;
+ if(pc==="K"&&a==="e1"&&z==="g1"){delete b.h1;b.f1="R"}
+ if(pc==="K"&&a==="e1"&&z==="c1"){delete b.a1;b.d1="R"}
+ if(pc==="k"&&a==="e8"&&z==="g8"){delete b.h8;b.f8="r"}
+ if(pc==="k"&&a==="e8"&&z==="c8"){delete b.a8;b.d8="r"}
+ return true;
+}
+function boardAfter(prefix){
+ const b=initial();
+ for(const m of prefix) move(b,m);
+ return b;
+}
+function samePrefix(line,prefix){
+ if(line.m.length<prefix.length)return false;
+ for(let i=0;i<prefix.length;i++)if(line.m[i]!==prefix[i])return false;
+ return true;
+}
+function uniq(arr){return [...new Set(arr)]}
+function choice(arr){return arr[Math.floor(Math.random()*arr.length)]}
+
+function buildFilters(){
+ const groups=uniq(L.map(x=>x.g)).sort();
+ $("filter").innerHTML='<option value="all">Tutto il repertorio</option>'+groups.map(g=>`<option value="${g}">${g}</option>`).join("");
+ $("branchCount").textContent=L.length;
+ $("nodeCount").textContent=allStartNodes("all","all").length;
+}
+function depthOK(p,d){
+ if(d==="all")return true;
+ if(d==="early")return p<=10;
+ if(d==="mid")return p>10&&p<=18;
+ return p>18;
+}
+function allStartNodes(group,depth){
+ const map=new Map();
+ const pool=group==="all"?L:L.filter(x=>x.g===group);
+ for(const l of pool){
+   for(let p=0;p<l.m.length;p+=2){
+     if(!depthOK(p,depth))continue;
+     const prefix=l.m.slice(0,p);
+     const k=prefix.join(" ");
+     if(!map.has(k))map.set(k,{prefix,p,lines:[]});
+     map.get(k).lines.push(l);
+   }
+ }
+ return [...map.values()];
+}
+function newPuzzle(){
+ const group=$("filter").value, dep=$("depthFilter").value;
+ let nodes=allStartNodes(group,dep);
+ if(!nodes.length)nodes=allStartNodes(group,"all");
+ const node=choice(nodes);
+ startPrefix=node.prefix.slice();
+ ply=node.p;
+ active=node.lines.filter(l=>samePrefix(l,startPrefix) && l.m.length>ply);
+ B=boardAfter(startPrefix);
+ currentGroup=active[0]?.g||"";
+ sel=null;locked=false;lastA=lastB=null;solvedLast=false;
+ $("opening").textContent=currentGroup;
+ $("line").textContent="Posizione casuale";
+ $("depth").textContent="Ply "+ply;
+ $("note").textContent="";
+ setStatus("");
+ render();
+}
+function order(){
+ return flipped?{fs:[...F].reverse(),rs:[1,2,3,4,5,6,7,8]}:{fs:[...F],rs:[8,7,6,5,4,3,2,1]};
+}
+function render(){
+ const {fs,rs}=order();
+ $("ranks").innerHTML=rs.map(x=>`<span>${x}</span>`).join("");
+ $("files").innerHTML=fs.map(x=>`<span>${x}</span>`).join("");
+ $("board").innerHTML="";
+ for(const r of rs)for(const f of fs){
+   const sq=f+r,fi=F.indexOf(f);
+   const el=document.createElement("div");
+   el.className="sq "+(((fi+r)%2)?"dark":"light");
+   if(sel===sq)el.classList.add("sel");
+   if(sq===lastA||sq===lastB)el.classList.add("last");
+   const pc=B[sq];
+   if(pc){
+     const p=document.createElement("span");
+     p.className="piece "+(pc===pc.toUpperCase()?"wp":"bp");
+     // Use filled black chess glyphs for both colors, with CSS controlling fill color.
+     p.textContent=S[pc];
+     el.appendChild(p);
+   }
+   el.addEventListener("click",()=>tap(sq,pc),{passive:true});
+   $("board").appendChild(el);
+ }
+}
+function setStatus(t,k=""){
+ $("status").textContent=t;$("status").className="status "+k;
+}
+function scores(){
+ $("good").textContent=good;$("bad").textContent=bad;$("streak").textContent=streak;
+}
+function tap(sq,pc){
+ if(locked||!active.length)return;
+ const isWhite=pc&&pc===pc.toUpperCase();
+ if(!sel){if(isWhite){sel=sq;render()}return}
+ if(sq===sel){sel=null;render();return}
+ if(isWhite){sel=sq;render();return}
+ attempt(sel,sq);
+}
+function validWhiteMoves(){
+ return uniq(active.filter(l=>l.m.length>ply).map(l=>l.m[ply]));
+}
+function attempt(a,b){
+ const played=a+b;
+ const valid=validWhiteMoves();
+ const matches=valid.filter(m=>m.slice(0,4)===played);
+ if(!matches.length){
+   bad++;streak=0;scores();sel=null;render();setStatus("Mossa errata.","bad");return;
+ }
+ const chosen=matches[0];
+ active=active.filter(l=>l.m.length>ply && l.m[ply]===chosen);
+ move(B,chosen);lastA=a;lastB=b;sel=null;
+ good++;streak++;scores();solvedLast=true;
+ $("line").textContent=active[0]?.n||"Ramo del repertorio";
+ $("note").textContent="";
+ render();setStatus("Corretta ✓","ok");
+ ply++;
+ locked=true;
+ setTimeout(playBlack,420);
+}
+function playBlack(){
+ const withReply=active.filter(l=>l.m.length>ply);
+ if(!withReply.length){
+   finishBranch();return;
+ }
+ const replies=uniq(withReply.map(l=>l.m[ply]));
+ const reply=choice(replies);
+ active=withReply.filter(l=>l.m[ply]===reply);
+ move(B,reply);lastA=reply.slice(0,2);lastB=reply.slice(2,4);
+ ply++;
+ $("depth").textContent="Ply "+ply;
+ render();
+ const withWhite=active.filter(l=>l.m.length>ply);
+ if(!withWhite.length){
+   setStatus("Il Nero ha giocato "+reply+". Ramo completato.","ok");
+   locked=true;setTimeout(newPuzzle,950);return;
+ }
+ active=withWhite;
+ locked=false;
+ $("line").textContent="Continua il ramo";
+ setStatus("Il Nero ha mosso. Tocca a te.","info");
+}
+function finishBranch(){
+ const notes=uniq(active.map(l=>l.t).filter(Boolean));
+ if(notes.length)$("note").textContent=notes[0];
+ setStatus("Ramo completato. Nuova posizione…","ok");
+ locked=true;setTimeout(newPuzzle,950);
+}
+$("ideaBtn").onclick=()=>{
+ const notes=uniq(active.map(l=>l.t).filter(Boolean));
+ $("note").textContent=notes.length?notes.join(" / "):"Nessuna nota aggiuntiva per questo nodo.";
+};
+$("newBtn").onclick=newPuzzle;
+$("flipBtn").onclick=()=>{flipped=!flipped;sel=null;render()};
+$("filter").onchange=newPuzzle;
+$("depthFilter").onchange=newPuzzle;
+
+buildFilters();scores();newPuzzle();
+</script>
+</body>
+</html>
